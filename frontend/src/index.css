@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-aero-slate-900 text-slate-100 font-sans antialiased;
+  }
+  
+  #root {
+    @apply min-h-screen;
+  }
+}
+
+@layer components {
+  .aero-card {
+    @apply bg-aero-slate-800/50 backdrop-blur-sm border border-aero-cyan-500/20 rounded-lg p-4;
+  }
+  
+  .aero-button {
+    @apply bg-aero-cyan-500 hover:bg-aero-cyan-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95;
+  }
+  
+  .aero-button-secondary {
+    @apply bg-aero-slate-700 hover:bg-aero-slate-600 text-aero-cyan-400 font-semibold py-3 px-6 rounded-lg border border-aero-cyan-500/30 transition-all duration-200;
+  }
+  
+  .aero-input {
+    @apply bg-aero-slate-800/50 border border-aero-cyan-500/20 rounded-lg px-4 py-3 text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-aero-cyan-500/50 focus:border-aero-cyan-500/50;
+  }
+}

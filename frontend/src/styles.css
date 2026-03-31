@@ -1,0 +1,640 @@
+/* AeroVision AI CSS Styles */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  background: #020617;
+  color: #f1f5f9;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Header */
+header {
+  background: rgba(30, 41, 59, 0.5);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(6, 182, 212, 0.2);
+  padding: 1rem 0;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.logo-icon {
+  width: 2rem;
+  height: 2rem;
+  background: #06b6d4;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.875rem;
+  color: white;
+}
+
+.logo-text {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #06b6d4;
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+}
+
+.status-dot.connected {
+  background: #10b981;
+  animation: pulse 2s infinite;
+}
+
+.status-dot.connecting {
+  background: #f59e0b;
+  animation: pulse 2s infinite;
+}
+
+.status-dot.disconnected {
+  background: #ef4444;
+}
+
+.status-text {
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+.connect-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.connect-btn.connect {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.connect-btn.disconnect {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Main Layout */
+main {
+  padding: 1.5rem 0;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  gap: 1.5rem;
+  height: calc(100vh - 8rem);
+}
+
+/* Cards */
+.card {
+  background: rgba(30, 41, 59, 0.5);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(6, 182, 212, 0.2);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: between;
+  margin-bottom: 1rem;
+}
+
+.card-title {
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: #06b6d4;
+  margin: 0;
+}
+
+/* Fleet Sidebar */
+.drone-card {
+  background: rgba(30, 41, 59, 0.3);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(6, 182, 212, 0.1);
+  margin-bottom: 1rem;
+}
+
+.drone-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.drone-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.drone-id {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.drone-status {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-transform: capitalize;
+}
+
+.telemetry-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.telemetry-label {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.telemetry-value {
+  font-size: 0.75rem;
+  color: #f1f5f9;
+}
+
+.progress-bar {
+  width: 4rem;
+  height: 0.5rem;
+  background: rgba(30, 41, 59, 0.6);
+  border-radius: 0.25rem;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.progress-fill.battery-good {
+  background: #10b981;
+}
+
+.progress-fill.battery-medium {
+  background: #f59e0b;
+}
+
+.progress-fill.battery-low {
+  background: #ef4444;
+}
+
+/* Map */
+.map-container {
+  position: relative;
+  background: rgba(30, 41, 59, 0.3);
+  border-radius: 0.5rem;
+  border: 1px solid rgba(6, 182, 212, 0.2);
+  overflow: hidden;
+  height: 100%;
+}
+
+.map-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.2;
+}
+
+.grid-line-h {
+  position: absolute;
+  width: 100%;
+  border-top: 1px solid rgba(6, 182, 212, 0.1);
+}
+
+.grid-line-v {
+  position: absolute;
+  height: 100%;
+  border-left: 1px solid rgba(6, 182, 212, 0.1);
+}
+
+.drone-marker {
+  position: absolute;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.drone-marker.alpha {
+  background: #3b82f6;
+}
+
+.drone-marker.bravo {
+  background: #f59e0b;
+}
+
+.drone-marker.charlie {
+  background: #10b981;
+}
+
+.drone-marker::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  animation: ping 2s infinite;
+}
+
+.drone-marker.alpha::after {
+  background: #3b82f6;
+}
+
+.drone-marker.bravo::after {
+  background: #f59e0b;
+}
+
+.drone-marker.charlie::after {
+  background: #10b981;
+}
+
+.drone-label {
+  position: absolute;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.drone-label.alpha {
+  color: #3b82f6;
+}
+
+.drone-label.bravo {
+  color: #f59e0b;
+}
+
+.drone-label.charlie {
+  color: #10b981;
+}
+
+/* AI Chat Zone */
+.chat-form {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.chat-textarea {
+  flex: 1;
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(6, 182, 212, 0.2);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  color: #f1f5f9;
+  resize: none;
+  margin-bottom: 1rem;
+}
+
+.chat-textarea:focus {
+  outline: none;
+  border-color: rgba(6, 182, 212, 0.5);
+  box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.25);
+}
+
+.chat-textarea::placeholder {
+  color: #64748b;
+}
+
+.chat-submit {
+  background: #06b6d4;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 1rem;
+}
+
+.chat-submit:hover {
+  background: #0891b2;
+  transform: translateY(-1px);
+}
+
+.chat-submit:active {
+  transform: translateY(0);
+}
+
+.chat-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.last-command {
+  background: rgba(30, 41, 59, 0.5);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.last-command-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #06b6d4;
+  margin-bottom: 0.5rem;
+}
+
+.last-command-code {
+  font-size: 0.75rem;
+  color: #f1f5f9;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.example-commands {
+  margin-top: 1rem;
+}
+
+.example-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-bottom: 0.5rem;
+}
+
+.example-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.example-btn {
+  background: rgba(30, 41, 59, 0.5);
+  color: #f1f5f9;
+  border: 1px solid rgba(6, 182, 212, 0.2);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.example-btn:hover {
+  background: rgba(30, 41, 59, 0.7);
+  border-color: rgba(6, 182, 212, 0.4);
+}
+
+/* Mode Selectors */
+.mode-selector {
+  margin-top: 1.5rem;
+}
+
+.mode-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.mode-card {
+  background: rgba(30, 41, 59, 0.3);
+  border: 1px solid rgba(6, 182, 212, 0.2);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.mode-card:hover {
+  border-color: rgba(6, 182, 212, 0.4);
+  background: rgba(30, 41, 59, 0.5);
+  transform: translateY(-2px);
+}
+
+.mode-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.mode-card:hover .mode-icon {
+  animation: bounce 1s infinite;
+}
+
+.mode-name {
+  font-size: 1.125rem;
+  font-weight: bold;
+  color: #f1f5f9;
+  margin-bottom: 0.5rem;
+}
+
+.mode-card:hover .mode-name {
+  color: #06b6d4;
+}
+
+.mode-description {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  margin-bottom: 1rem;
+}
+
+.mode-card:hover .mode-description {
+  color: #f1f5f9;
+}
+
+.mode-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.mode-card:hover .mode-status {
+  color: #06b6d4;
+}
+
+.mode-status-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: #475569;
+}
+
+.mode-card:hover .mode-status-dot {
+  background: #06b6d4;
+}
+
+.quick-actions {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(6, 182, 212, 0.2);
+}
+
+.quick-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.quick-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.quick-btn.takeoff {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.quick-btn.takeoff:hover {
+  background: rgba(16, 185, 129, 0.3);
+}
+
+.quick-btn.land {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.quick-btn.land:hover {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+.quick-btn.hover {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.quick-btn.hover:hover {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+/* Footer */
+footer {
+  background: rgba(30, 41, 59, 0.5);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(6, 182, 212, 0.2);
+  margin-top: 2rem;
+  padding: 1rem 0;
+}
+
+.footer-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.footer-text {
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+.footer-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes ping {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(-25%);
+    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+  }
+  50% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  
+  .mode-grid {
+    grid-template-columns: 1fr;
+  }
+}

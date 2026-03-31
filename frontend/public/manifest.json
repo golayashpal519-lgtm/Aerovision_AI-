@@ -1,0 +1,69 @@
+{
+  "name": "AeroVision AI",
+  "short_name": "AeroVision",
+  "description": "Cross-platform Drone Command PWA",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#06b6d4",
+  "orientation": "landscape",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["utilities", "productivity", "technology"],
+  "icons": [
+    {
+      "src": "/pwa-192x192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/pwa-512x512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Quick Patrol",
+      "short_name": "Patrol",
+      "description": "Start patrol mode",
+      "url": "/?action=patrol",
+      "icons": [
+        {
+          "src": "/pwa-192x192.svg",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Guard Mode",
+      "short_name": "Guard",
+      "description": "Activate guard mode",
+      "url": "/?action=guard",
+      "icons": [
+        {
+          "src": "/pwa-192x192.svg",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Desktop view of AeroVision AI"
+    },
+    {
+      "src": "/screenshot-mobile.png",
+      "sizes": "375x667",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Mobile view of AeroVision AI"
+    }
+  ]
+}

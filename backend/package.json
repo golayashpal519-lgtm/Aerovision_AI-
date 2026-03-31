@@ -1,0 +1,32 @@
+{
+  "name": "aerovision-backend",
+  "version": "1.0.0",
+  "description": "AeroVision AI Backend Server",
+  "main": "dist/server.js",
+  "scripts": {
+    "start": "node dist/server.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "build": "tsc",
+    "clean": "rimraf dist"
+  },
+  "keywords": [
+    "drone",
+    "api",
+    "backend",
+    "aerovision"
+  ],
+  "author": "AeroVision AI Team",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^4.22.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.13",
+    "@types/express": "^4.17.17",
+    "@types/node": "^18.16.3",
+    "rimraf": "^4.4.1",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.0.4"
+  }
+}
