@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { droneService } from './services/DroneService';
 import type { DroneCommand } from './types/drone';
 
@@ -24,7 +24,6 @@ interface DroneStatus {
 function RemoteControl() {
   const [selectedDrone, setSelectedDrone] = useState<string>('Alpha');
   const [isConnected, setIsConnected] = useState(false);
-  const [cameraFeed, setCameraFeed] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [cameraZoom, setCameraZoom] = useState(1.0);
   const [pipMode, setPipMode] = useState(false);
@@ -44,10 +43,6 @@ function RemoteControl() {
     { id: 'Charlie', connected: false, battery: 92, signal: 95, gps: { lat: 37.7649, lng: -122.4294, alt: 150 }, status: 'idle', color: '#10b981' }
   ]);
 
-  const joystickRef = useRef<HTMLDivElement>(null);
-  const [isJoystickActive, setIsJoystickActive] = useState(false);
-  const [joystickPosition, setJoystickPosition] = useState({ x: 0, y: 0 });
-
   // Initialize connection
   useEffect(() => {
     const handleConnect = async () => {
@@ -60,7 +55,6 @@ function RemoteControl() {
             connected: true,
             status: 'hovering'
           })));
-          startCameraFeed(selectedDrone);
         }
       } catch (error) {
         console.error('Connection failed:', error);
@@ -71,15 +65,7 @@ function RemoteControl() {
     return () => {
       droneService.disconnect();
     };
-  }, [selectedDrone]);
-
-  // Start camera feed
-  const startCameraFeed = (droneId: string) => {
-    const drone = drones.find(d => d.id === droneId);
-    if (drone && drone.connected) {
-      setCameraFeed(`drone-camera-${droneId.toLowerCase()}`);
-    }
-  };
+  }, []);
 
   // Control handlers
   const handleControlChange = (control: keyof DroneControlState, value: number) => {
@@ -95,59 +81,41 @@ function RemoteControl() {
 
     switch (control) {
       case 'throttle':
-        command = { droneId: selectedDrone, command: value > 0 ? 'FORWARD' : value < 0 ? 'BACKWARD' : 'HOVER' };
+        if (value > 0) {
+          command = { droneId: selectedDrone, command: 'MOVE', coordinates: [0, 1, controls.altitude] };
+        } else if (value < 0) {
+          command = { droneId: selectedDrone, command: 'MOVE', coordinates: [0, -1, controls.altitude] };
+        } else {
+          command = { droneId: selectedDrone, command: 'HOVER' };
+        }
         break;
       case 'yaw':
-        command = { droneId: selectedDrone, command: value > 0 ? 'TURN_RIGHT' : value < 0 ? 'TURN_LEFT' : 'HOVER' };
+        command = { droneId: selectedDrone, command: 'HOVER' };
         break;
       case 'pitch':
-        command = { droneId: selectedDrone, command: value > 0 ? 'UP' : value < 0 ? 'DOWN' : 'HOVER' };
+        if (value > 0) {
+          command = { droneId: selectedDrone, command: 'MOVE', coordinates: [0, 0, controls.altitude + 10] };
+        } else if (value < 0) {
+          command = { droneId: selectedDrone, command: 'MOVE', coordinates: [0, 0, Math.max(0, controls.altitude - 10)] };
+        } else {
+          command = { droneId: selectedDrone, command: 'HOVER' };
+        }
         break;
       case 'roll':
-        command = { droneId: selectedDrone, command: value > 0 ? 'RIGHT' : value < 0 ? 'LEFT' : 'HOVER' };
+        if (value > 0) {
+          command = { droneId: selectedDrone, command: 'MOVE', coordinates: [1, 0, controls.altitude] };
+        } else if (value < 0) {
+          command = { droneId: selectedDrone, command: 'MOVE', coordinates: [-1, 0, controls.altitude] };
+        } else {
+          command = { droneId: selectedDrone, command: 'HOVER' };
+        }
         break;
       case 'altitude':
-        command = { droneId: selectedDrone, command: 'ALTITUDE', ...(value as any) };
+        command = { droneId: selectedDrone, command: 'MOVE', coordinates: [0, 0, value] };
         break;
     }
 
     droneService.sendCommand(command);
-  };
-
-  // Joystick controls
-  const handleJoystickMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isJoystickActive || !joystickRef.current) return;
-
-    const rect = joystickRef.current.getBoundingClientRect();
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    const x = e.clientX - rect.left - centerX;
-    const y = e.clientY - rect.top - centerY;
-
-    const maxDistance = Math.min(centerX, centerY) - 10;
-    const distance = Math.min(Math.sqrt(x * x + y * y), maxDistance);
-    const angle = Math.atan2(y, x);
-
-    const normalizedX = (distance * Math.cos(angle)) / maxDistance * 100;
-    const normalizedY = -(distance * Math.sin(angle)) / maxDistance * 100;
-
-    setJoystickPosition({ x: normalizedX, y: normalizedY });
-    setControls(prev => ({
-      ...prev,
-      throttle: normalizedY,
-      roll: normalizedX
-    }));
-
-    sendControlCommand('throttle', normalizedY);
-    sendControlCommand('roll', normalizedX);
-  };
-
-  const handleJoystickEnd = () => {
-    setIsJoystickActive(false);
-    setJoystickPosition({ x: 0, y: 0 });
-    setControls(prev => ({ ...prev, throttle: 0, roll: 0 }));
-    sendControlCommand('throttle', 0);
-    sendControlCommand('roll', 0);
   };
 
   // Emergency functions
@@ -160,11 +128,11 @@ function RemoteControl() {
       altitude: 100,
       speed: 1.0
     });
-    droneService.sendCommand({ droneId: selectedDrone, command: 'EMERGENCY_STOP' });
+    droneService.sendCommand({ droneId: selectedDrone, command: 'LAND' });
   };
 
   const handleReturnToBase = () => {
-    droneService.sendCommand({ droneId: selectedDrone, command: 'RETURN_TO_BASE' });
+    droneService.sendCommand({ droneId: selectedDrone, command: 'MOVE', coordinates: [0, 0, 0] });
   };
 
   const currentDrone = drones.find(d => d.id === selectedDrone);
@@ -191,10 +159,7 @@ function RemoteControl() {
             {drones.map(drone => (
               <button
                 key={drone.id}
-                onClick={() => {
-                  setSelectedDrone(drone.id);
-                  startCameraFeed(drone.id);
-                }}
+                onClick={() => setSelectedDrone(drone.id)}
                 style={{
                   padding: '8px 16px',
                   borderRadius: '8px',
@@ -428,57 +393,148 @@ function RemoteControl() {
             🎮 Manual Controls
           </h2>
 
-          {/* Joystick */}
+          {/* Simple Directional Controls */}
           <div>
-            <h3 style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '10px' }}>Movement Joystick</h3>
-            <div
-              ref={joystickRef}
-              onMouseDown={() => setIsJoystickActive(true)}
-              onMouseMove={handleJoystickMove}
-              onMouseUp={handleJoystickEnd}
-              onMouseLeave={handleJoystickEnd}
-              style={{
-                width: '150px',
-                height: '150px',
-                background: 'rgba(15, 23, 42, 0.5)',
-                borderRadius: '50%',
-                position: 'relative',
-                cursor: 'pointer',
-                border: '2px solid rgba(6, 182, 212, 0.3)',
-                margin: '0 auto'
-              }}
-            >
-              {/* Joystick Knob */}
-              <div style={{
-                position: 'absolute',
-                width: '40px',
-                height: '40px',
-                background: currentDrone?.color || '#06b6d4',
-                borderRadius: '50%',
-                top: '50%',
-                left: '50%',
-                transform: `translate(calc(-50% + ${joystickPosition.x}px), calc(-50% + ${joystickPosition.y}px))`,
-                transition: isJoystickActive ? 'none' : 'transform 0.2s ease',
-                boxShadow: '0 4px 12px rgba(6, 182, 212, 0.4)'
-              }}></div>
+            <h3 style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '15px', textAlign: 'center' }}>
+              Movement Controls
+            </h3>
+            
+            {/* Direction Buttons Grid */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(3, 1fr)', 
+              gap: '8px',
+              marginBottom: '20px'
+            }}>
+              {/* Top Row */}
+              <div></div>
+              <button
+                onMouseDown={() => handleControlChange('pitch', 50)}
+                onMouseUp={() => handleControlChange('pitch', 0)}
+                style={{
+                  padding: '15px',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: 'none',
+                  background: 'rgba(6, 182, 212, 0.2)',
+                  color: '#06b6d4',
+                  fontSize: '16px'
+                }}
+              >
+                ⬆️
+              </button>
+              <div></div>
               
-              {/* Center Cross */}
-              <div style={{
-                position: 'absolute',
-                top: '50%',
-                left: '0',
-                right: '0',
-                height: '1px',
-                background: 'rgba(6, 182, 212, 0.2)'
-              }}></div>
-              <div style={{
-                position: 'absolute',
-                left: '50%',
-                top: '0',
-                bottom: '0',
-                width: '1px',
-                background: 'rgba(6, 182, 212, 0.2)'
-              }}></div>
+              {/* Middle Row */}
+              <button
+                onMouseDown={() => handleControlChange('roll', -50)}
+                onMouseUp={() => handleControlChange('roll', 0)}
+                style={{
+                  padding: '15px',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: 'none',
+                  background: 'rgba(6, 182, 212, 0.2)',
+                  color: '#06b6d4',
+                  fontSize: '16px'
+                }}
+              >
+                ⬅️
+              </button>
+              <button
+                onClick={() => handleControlChange('throttle', 0)}
+                style={{
+                  padding: '15px',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: 'none',
+                  background: 'rgba(16, 185, 129, 0.2)',
+                  color: '#10b981',
+                  fontSize: '16px'
+                }}
+              >
+                ⏸️
+              </button>
+              <button
+                onMouseDown={() => handleControlChange('roll', 50)}
+                onMouseUp={() => handleControlChange('roll', 0)}
+                style={{
+                  padding: '15px',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: 'none',
+                  background: 'rgba(6, 182, 212, 0.2)',
+                  color: '#06b6d4',
+                  fontSize: '16px'
+                }}
+              >
+                ➡️
+              </button>
+              
+              {/* Bottom Row */}
+              <div></div>
+              <button
+                onMouseDown={() => handleControlChange('pitch', -50)}
+                onMouseUp={() => handleControlChange('pitch', 0)}
+                style={{
+                  padding: '15px',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: 'none',
+                  background: 'rgba(6, 182, 212, 0.2)',
+                  color: '#06b6d4',
+                  fontSize: '16px'
+                }}
+              >
+                ⬇️
+              </button>
+              <div></div>
+            </div>
+
+            {/* Forward/Backward Controls */}
+            <div style={{ 
+              display: 'flex', 
+              gap: '10px', 
+              marginBottom: '20px',
+              justifyContent: 'center'
+            }}>
+              <button
+                onMouseDown={() => handleControlChange('throttle', 50)}
+                onMouseUp={() => handleControlChange('throttle', 0)}
+                style={{
+                  padding: '12px 20px',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: 'none',
+                  background: 'rgba(6, 182, 212, 0.2)',
+                  color: '#06b6d4',
+                  fontSize: '14px'
+                }}
+              >
+                ⬆️ Forward
+              </button>
+              <button
+                onMouseDown={() => handleControlChange('throttle', -50)}
+                onMouseUp={() => handleControlChange('throttle', 0)}
+                style={{
+                  padding: '12px 20px',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: 'none',
+                  background: 'rgba(6, 182, 212, 0.2)',
+                  color: '#06b6d4',
+                  fontSize: '14px'
+                }}
+              >
+                ⬇️ Backward
+              </button>
             </div>
           </div>
 
