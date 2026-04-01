@@ -1,11 +1,11 @@
 {
-  "extends": "./frontend/tsconfig.json",
+  "extends": "./tsconfig.app.json",
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["frontend/src/*"]
+      "@/*": ["./src/*"]
     }
   },
-  "include": ["frontend"],
+  "include": ["src"],
   "exclude": ["node_modules", "dist"]
 }
