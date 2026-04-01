@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { droneService } from './services/DroneService';
 import type { DroneCommand } from './types/drone';
 
@@ -15,35 +15,6 @@ function AppSimpleChat() {
   const [selectedDrone, setSelectedDrone] = useState<string | null>(null);
   const [mapCenter, setMapCenter] = useState({ lat: 37.7749, lng: -122.4194 });
   const [mapZoom, setMapZoom] = useState(15);
-  const [connectedDrones, setConnectedDrones] = useState([
-    { 
-      id: 'Alpha', 
-      connected: false, 
-      gps: { lat: 37.7749, lng: -122.4194, alt: 120 },
-      battery: 85,
-      signal: 92,
-      status: 'offline',
-      color: '#3b82f6'
-    },
-    { 
-      id: 'Bravo', 
-      connected: false, 
-      gps: { lat: 37.7849, lng: -122.4094, alt: 95 },
-      battery: 67,
-      signal: 88,
-      status: 'offline',
-      color: '#f59e0b'
-    },
-    { 
-      id: 'Charlie', 
-      connected: false, 
-      gps: { lat: 37.7649, lng: -122.4294, alt: 150 },
-      battery: 92,
-      signal: 95,
-      status: 'offline',
-      color: '#10b981'
-    }
-  ]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<HTMLDivElement>(null);
 
@@ -72,7 +43,7 @@ function AppSimpleChat() {
     
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    console.log(`User response to install prompt: ${outcome}`);
+    console.log(`User response to the install prompt: ${outcome}`);
     setDeferredPrompt(null);
     setShowInstallButton(false);
   };
@@ -83,17 +54,6 @@ function AppSimpleChat() {
       const success = await droneService.connect();
       setIsConnected(success);
       setConnectionStatus(success ? 'connected' : 'disconnected');
-      
-      // Update drone connection status
-      if (success) {
-        setConnectedDrones(prev => prev.map(drone => ({
-          ...drone,
-          connected: true,
-          status: drone.id === 'Alpha' ? 'patrolling' : 
-                  drone.id === 'Bravo' ? 'idle' : 
-                  drone.id === 'Charlie' ? 'guarding' : 'patrolling'
-        })));
-      }
     } catch (error) {
       console.error('Connection failed:', error);
       setConnectionStatus('disconnected');
@@ -105,13 +65,6 @@ function AppSimpleChat() {
       await droneService.disconnect();
       setIsConnected(false);
       setConnectionStatus('disconnected');
-      
-      // Update drone connection status
-      setConnectedDrones(prev => prev.map(drone => ({
-        ...drone,
-        connected: false,
-        status: 'offline'
-      })));
     } catch (error) {
       console.error('Disconnection failed:', error);
     }
@@ -283,284 +236,6 @@ function AppSimpleChat() {
           {isConnected ? (
             <div>
               {connectedDrones.map((drone) => (
-                <div key={drone.id} style={{ 
-                  background: 'rgba(30, 41, 59, 0.3)', 
-                  borderRadius: '0.5rem', 
-                  padding: '0.75rem', 
-                  marginBottom: '0.75rem',
-                  border: `1px solid ${drone.connected ? 'rgba(6, 182, 212, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`,
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-                  opacity: drone.connected ? 1 : 0.6
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <div style={{ 
-                        width: '0.5rem', 
-                        height: '0.5rem', 
-                        borderRadius: '50%', 
-                        background: drone.connected ? drone.color : '#ef4444',
-                        animation: drone.connected ? 'pulse 2s infinite' : 'none'
-                      }}></div>
-                      <span style={{ fontWeight: 600, color: '#f1f5f9' }}>{drone.id}</span>
-                    </div>
-                    <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>
-                      {drone.status}
-                    </span>
-                  </div>
-                  
-                  <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                      <span>Connection:</span>
-                      <span style={{ color: drone.connected ? '#10b981' : '#ef4444' }}>
-                        {drone.connected ? 'Connected' : 'Offline'}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                      <span>Battery:</span>
-                      <span style={{ color: '#f1f5f9' }}>{drone.battery}%</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                      <span>Signal:</span>
-                      <span style={{ color: '#f1f5f9' }}>{drone.signal}%</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Location:</span>
-                      <span style={{ color: '#f1f5f9', fontSize: '0.65rem' }}>
-                        {drone.gps.lat.toFixed(4)}, {drone.gps.lng.toFixed(4)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ 
-              textAlign: 'center', 
-              color: '#94a3b8', 
-              padding: '2rem' 
-            }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🚁</div>
-              <div>Connect to view fleet status</div>
-            </div>
-          )}
-        </div>
-
-        {/* Drone Positioning Map - CENTER */}
-        <div style={{ 
-          background: 'rgba(30, 41, 59, 0.5)', 
-          borderRadius: '0.5rem', 
-          padding: '1rem',
-          height: '600px',
-          position: 'relative'
-        }}>
-          <h2 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#06b6d4', margin: '0 0 1rem 0' }}>
-            Drone Positioning
-          </h2>
-          
-          {/* Simple Map Container */}
-          <div 
-            ref={mapRef}
-            style={{ 
-              position: 'relative', 
-              height: 'calc(100% - 3rem)', 
-              background: 'radial-gradient(circle at center, rgba(6, 182, 212, 0.05), rgba(15, 23, 42, 0.3))', 
-              borderRadius: '0.75rem',
-              border: '1px solid rgba(6, 182, 212, 0.2)',
-              overflow: 'hidden',
-              boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.2)'
-            }}
-          >
-            {/* Grid Lines */}
-            <div style={{ position: 'absolute', inset: 0, opacity: 0.15 }}>
-              {[...Array(10)].map((_, i) => (
-                <div key={`h-${i}`} style={{ 
-                  position: 'absolute', 
-                  width: '100%', 
-                  borderTop: '1px dashed rgba(6, 182, 212, 0.1)', 
-                  top: `${i * 10}%` 
-                }}></div>
-              ))}
-              {[...Array(10)].map((_, i) => (
-                <div key={`v-${i}`} style={{ 
-                  position: 'absolute', 
-                  height: '100%', 
-                  borderLeft: '1px dashed rgba(6, 182, 212, 0.1)', 
-                  left: `${i * 10}%` 
-                }}></div>
-              ))}
-            </div>
-
-            {/* Drone Markers - Only Show Connected Drones */}
-            {connectedDrones.filter(drone => drone.connected).map((drone) => (
-              <div key={drone.id} style={{ 
-                position: 'absolute', 
-                top: `${25 + (drone.id === 'Alpha' ? 0 : drone.id === 'Charlie' ? 25 : 0)}%`, 
-                left: `${25 + (drone.id === 'Alpha' ? 0 : drone.id === 'Charlie' ? 25 : 0)}%`, 
-                transform: 'translate(-50%, -50%)',
-                cursor: 'pointer',
-                transition: 'transform 0.3s ease'
-              }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.2)';
-                  setSelectedDrone(drone.id);
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1)';
-                  setSelectedDrone(null);
-                }}
-              >
-                <div style={{ 
-                  position: 'relative', 
-                  width: '1.25rem', 
-                  height: '1.25rem', 
-                  borderRadius: '50%', 
-                  background: `linear-gradient(135deg, ${drone.color}, ${drone.color}dd)`,
-                  animation: 'pulse 2s infinite',
-                  boxShadow: `0 0 20px ${drone.color}99`
-                }}></div>
-                <div style={{ 
-                  position: 'absolute', 
-                  inset: 0, 
-                  width: '1.25rem', 
-                  height: '1.25rem', 
-                  borderRadius: '50%', 
-                  background: `linear-gradient(135deg, ${drone.color}, ${drone.color}dd)`,
-                  animation: 'ping 2s infinite'
-                }}></div>
-                <div style={{ 
-                  position: 'absolute', 
-                  top: '-2rem', 
-                  left: '50%', 
-                  transform: 'translateX(-50%)', 
-                  fontSize: '0.7rem', 
-                  color: drone.color, 
-                  whiteSpace: 'nowrap',
-                  fontWeight: 'bold',
-                  background: 'rgba(30, 41, 59, 0.9)',
-                  padding: '0.25rem 0.5rem',
-                  borderRadius: '0.25rem',
-                  border: `1px solid ${drone.color}66`,
-                  textAlign: 'center',
-                  backdropFilter: 'blur(4px)'
-                }}>
-                  <div>{drone.id}</div>
-                  <div style={{ fontSize: '0.6rem', opacity: 0.8 }}>
-                    {drone.gps.lat.toFixed(4)}, {drone.gps.lng.toFixed(4)}
-                  </div>
-                  <div style={{ fontSize: '0.6rem', opacity: 0.8 }}>
-                    Alt: {drone.gps.alt}m
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {/* Map Controls */}
-            <div style={{ 
-              position: 'absolute', 
-              bottom: '1rem', 
-              left: '1rem', 
-              fontSize: '0.75rem', 
-              color: '#94a3b8',
-              background: 'rgba(30, 41, 59, 0.9)',
-              padding: '0.5rem 0.75rem',
-              borderRadius: '0.5rem',
-              border: '1px solid rgba(6, 182, 212, 0.2)',
-              backdropFilter: 'blur(8px)'
-            }}>
-              <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-                <span>Lat: {mapCenter.lat.toFixed(4)}</span>
-                <span>Lng: {mapCenter.lng.toFixed(4)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-                <span>Zoom: {mapZoom}x</span>
-                {selectedDrone && <span style={{ color: '#06b6d4' }}>Selected: {selectedDrone}</span>}
-              </div>
-            </div>
-
-            <div style={{ 
-              position: 'absolute', 
-              top: '1rem', 
-              right: '1rem', 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: '0.5rem' 
-            }}>
-              <button style={{
-                width: '2.5rem', 
-                height: '2.5rem', 
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(30, 41, 59, 0.6))', 
-                border: '1px solid rgba(6, 182, 212, 0.3)', 
-                borderRadius: '0.5rem', 
-                color: '#f1f5f9', 
-                fontSize: '1.125rem', 
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)'
-              }}
-              onClick={() => setMapZoom(prev => Math.min(prev + 1, 20))}
-              title="Zoom In"
-              >+</button>
-              <button style={{
-                width: '2.5rem', 
-                height: '2.5rem', 
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(30, 41, 59, 0.6))', 
-                border: '1px solid rgba(6, 182, 212, 0.3)', 
-                borderRadius: '0.5rem', 
-                color: '#f1f5f9', 
-                fontSize: '1.125rem', 
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)'
-              }}
-              onClick={() => setMapZoom(prev => Math.max(prev - 1, 1))}
-              title="Zoom Out"
-              >-</button>
-              <button style={{
-                width: '2.5rem', 
-                height: '2.5rem', 
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(30, 41, 59, 0.6))', 
-                border: '1px solid rgba(6, 182, 212, 0.3)', 
-                borderRadius: '0.5rem', 
-                color: '#f1f5f9', 
-                fontSize: '1rem', 
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)'
-              }}
-              onClick={() => setMapCenter({ lat: 37.7749, lng: -122.4194 })}
-              title="Reset View"
-              >⊙</button>
-            </div>
-          </div>
-        </div>
-
-        {/* AI Chat Interface - RIGHT */}
-        <div style={{ 
-          background: 'rgba(30, 41, 59, 0.5)', 
-          borderRadius: '8px', 
-          padding: '20px',
-          height: '600px',
-          display: 'flex',
-          flexDirection: 'column'
-        }}>
-          <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#06b6d4', margin: '0 0 20px 0' }}>
-            AI Mission Command
-          </h2>
-
-          {/* Messages */}
-          <div style={{ 
-            flex: 1, 
-            overflowY: 'auto', 
-            marginBottom: '20px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '15px',
-            padding: '10px',
-            background: 'rgba(15, 23, 42, 0.3)',
-            borderRadius: '8px',
-            border: '1px solid rgba(6, 182, 212, 0.1)'
-          }}>
-            {messages.map((msg, index) => (
               <div key={index} style={{ 
                 display: 'flex', 
                 gap: '10px',
@@ -827,64 +502,409 @@ function AppSimpleChat() {
             </button>
           </div>
         </div>
+
+        {/* Drone Positioning Map */}
+        <div style={{ 
+          background: 'rgba(30, 41, 59, 0.5)', 
+          borderRadius: '0.5rem', 
+          padding: '1rem',
+          height: '600px',
+          position: 'relative'
+        }}>
+          <h2 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#06b6d4', margin: '0 0 1rem 0' }}>
+            Drone Positioning
+          </h2>
+          
+          {/* Simple Map Container */}
+          <div 
+            ref={mapRef}
+            style={{ 
+              position: 'relative', 
+              height: 'calc(100% - 3rem)', 
+              background: 'radial-gradient(circle at center, rgba(6, 182, 212, 0.05), rgba(15, 23, 42, 0.3))', 
+              borderRadius: '0.75rem',
+              border: '1px solid rgba(6, 182, 212, 0.2)',
+              overflow: 'hidden',
+              boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.2)'
+            }}
+          >
+            {/* Grid Lines */}
+            <div style={{ position: 'absolute', inset: 0, opacity: 0.15 }}>
+              {[...Array(10)].map((_, i) => (
+                <div key={`h-${i}`} style={{ 
+                  position: 'absolute', 
+                  width: '100%', 
+                  borderTop: '1px dashed rgba(6, 182, 212, 0.1)', 
+                  top: `${i * 10}%` 
+                }}></div>
+              ))}
+              {[...Array(10)].map((_, i) => (
+                <div key={`v-${i}`} style={{ 
+                  position: 'absolute', 
+                  height: '100%', 
+                  borderLeft: '1px dashed rgba(6, 182, 212, 0.1)', 
+                  left: `${i * 10}%` 
+                }}></div>
+              ))}
+            </div>
+
+            {/* Drone Markers */}
+            <div style={{ 
+              position: 'absolute', 
+              top: '25%', 
+              left: '25%', 
+              transform: 'translate(-50%, -50%)',
+              cursor: 'pointer',
+              transition: 'transform 0.3s ease'
+            }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.2)';
+                setSelectedDrone('Alpha');
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1)';
+                setSelectedDrone(null);
+              }}
+            >
+              <div style={{ 
+                position: 'relative', 
+                width: '1.25rem', 
+                height: '1.25rem', 
+                borderRadius: '50%', 
+                background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                animation: 'pulse 2s infinite',
+                boxShadow: '0 0 20px rgba(59, 130, 246, 0.6)'
+              }}></div>
+              <div style={{ 
+                position: 'absolute', 
+                inset: 0, 
+                width: '1.25rem', 
+                height: '1.25rem', 
+                borderRadius: '50%', 
+                background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                animation: 'ping 2s infinite'
+              }}></div>
+              <div style={{ 
+                position: 'absolute', 
+                top: '-1.5rem', 
+                left: '50%', 
+                transform: 'translateX(-50%)', 
+                fontSize: '0.75rem', 
+                color: '#3b82f6', 
+                whiteSpace: 'nowrap',
+                fontWeight: 'bold',
+                background: 'rgba(30, 41, 59, 0.8)',
+                padding: '0.125rem 0.5rem',
+                borderRadius: '0.25rem',
+                border: '1px solid rgba(59, 130, 246, 0.3)'
+              }}>
+                Alpha
+              </div>
+            </div>
+
+            <div style={{ 
+              position: 'absolute', 
+              top: '50%', 
+              right: '33%', 
+              transform: 'translate(50%, -50%)',
+              cursor: 'pointer',
+              transition: 'transform 0.3s ease'
+            }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translate(50%, -50%) scale(1.2)';
+                setSelectedDrone('Bravo');
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translate(50%, -50%) scale(1)';
+                setSelectedDrone(null);
+              }}
+            >
+              <div style={{ 
+                position: 'relative', 
+                width: '1.25rem', 
+                height: '1.25rem', 
+                borderRadius: '50%', 
+                background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                animation: 'pulse 2s infinite',
+                boxShadow: '0 0 20px rgba(245, 158, 11, 0.6)'
+              }}></div>
+              <div style={{ 
+                position: 'absolute', 
+                inset: 0, 
+                width: '1.25rem', 
+                height: '1.25rem', 
+                borderRadius: '50%', 
+                background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                animation: 'ping 2s infinite'
+              }}></div>
+              <div style={{ 
+                position: 'absolute', 
+                top: '-1.5rem', 
+                left: '50%', 
+                transform: 'translateX(-50%)', 
+                fontSize: '0.75rem', 
+                color: '#f59e0b', 
+                whiteSpace: 'nowrap',
+                fontWeight: 'bold',
+                background: 'rgba(30, 41, 59, 0.8)',
+                padding: '0.125rem 0.5rem',
+                borderRadius: '0.25rem',
+                border: '1px solid rgba(245, 158, 11, 0.3)'
+              }}>
+                Bravo
+              </div>
+            </div>
+
+            <div style={{ 
+              position: 'absolute', 
+              bottom: '33%', 
+              left: '50%', 
+              transform: 'translate(-50%, 50%)',
+              cursor: 'pointer',
+              transition: 'transform 0.3s ease'
+            }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translate(-50%, 50%) scale(1.2)';
+                setSelectedDrone('Charlie');
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translate(-50%, 50%) scale(1)';
+                setSelectedDrone(null);
+              }}
+            >
+              <div style={{ 
+                position: 'relative', 
+                width: '1.25rem', 
+                height: '1.25rem', 
+                borderRadius: '50%', 
+                background: 'linear-gradient(135deg, #10b981, #059669)',
+                animation: 'pulse 2s infinite',
+                boxShadow: '0 0 20px rgba(16, 185, 129, 0.6)'
+              }}></div>
+              <div style={{ 
+                position: 'absolute', 
+                inset: 0, 
+                width: '1.25rem', 
+                height: '1.25rem', 
+                borderRadius: '50%', 
+                background: 'linear-gradient(135deg, #10b981, #059669)',
+                animation: 'ping 2s infinite'
+              }}></div>
+              <div style={{ 
+                position: 'absolute', 
+                bottom: '-1.5rem', 
+                left: '50%', 
+                transform: 'translateX(-50%)', 
+                fontSize: '0.75rem', 
+                color: '#10b981', 
+                whiteSpace: 'nowrap',
+                fontWeight: 'bold',
+                background: 'rgba(30, 41, 59, 0.8)',
+                padding: '0.125rem 0.5rem',
+                borderRadius: '0.25rem',
+                border: '1px solid rgba(16, 185, 129, 0.3)'
+              }}>
+                Charlie
+              </div>
+            </div>
+
+            {/* Map Controls */}
+            <div style={{ 
+              position: 'absolute', 
+              bottom: '1rem', 
+              left: '1rem', 
+              fontSize: '0.75rem', 
+              color: '#94a3b8',
+              background: 'rgba(30, 41, 59, 0.9)',
+              padding: '0.5rem 0.75rem',
+              borderRadius: '0.5rem',
+              border: '1px solid rgba(6, 182, 212, 0.2)',
+              backdropFilter: 'blur(8px)'
+            }}>
+              <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                <span>Lat: {mapCenter.lat.toFixed(4)}</span>
+                <span>Lng: {mapCenter.lng.toFixed(4)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                <span>Zoom: {mapZoom}x</span>
+                {selectedDrone && <span style={{ color: '#06b6d4' }}>Selected: {selectedDrone}</span>}
+              </div>
+            </div>
+
+            <div style={{ 
+              position: 'absolute', 
+              top: '1rem', 
+              right: '1rem', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '0.5rem' 
+            }}>
+              <button style={{
+                width: '2.5rem', 
+                height: '2.5rem', 
+                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(30, 41, 59, 0.6))', 
+                border: '1px solid rgba(6, 182, 212, 0.3)', 
+                borderRadius: '0.5rem', 
+                color: '#f1f5f9', 
+                fontSize: '1.125rem', 
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)'
+              }}
+              onClick={() => setMapZoom(prev => Math.min(prev + 1, 20))}
+              title="Zoom In"
+              >+</button>
+              <button style={{
+                width: '2.5rem', 
+                height: '2.5rem', 
+                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(30, 41, 59, 0.6))', 
+                border: '1px solid rgba(6, 182, 212, 0.3)', 
+                borderRadius: '0.5rem', 
+                color: '#f1f5f9', 
+                fontSize: '1.125rem', 
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)'
+              }}
+              onClick={() => setMapZoom(prev => Math.max(prev - 1, 1))}
+              title="Zoom Out"
+              >-</button>
+              <button style={{
+                width: '2.5rem', 
+                height: '2.5rem', 
+                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(30, 41, 59, 0.6))', 
+                border: '1px solid rgba(6, 182, 212, 0.3)', 
+                borderRadius: '0.5rem', 
+                color: '#f1f5f9', 
+                fontSize: '1rem', 
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)'
+              }}
+              onClick={() => setMapCenter({ lat: 37.7749, lng: -122.4194 })}
+              title="Reset View"
+              >⊙</button>
+            </div>
+          </div>
+
+        {/* Fleet Status */}
+        <div style={{ 
+          background: 'rgba(30, 41, 59, 0.5)', 
+          borderRadius: '0.5rem', 
+          padding: '1rem',
+          height: '600px'
+        }}>
+          <h2 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#06b6d4', margin: '0 0 1rem 0' }}>
+            Fleet Status
+          </h2>
+
+          {isConnected ? (
+            // Show all drones with their statuses
+            ['Alpha', 'Bravo', 'Charlie'].map((name, index) => (
+              <div key={name} style={{ 
+                background: 'rgba(30, 41, 59, 0.3)', 
+                borderRadius: '0.5rem', 
+                padding: '0.75rem', 
+                marginBottom: '0.75rem',
+                border: '1px solid rgba(6, 182, 212, 0.2)',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{ 
+                      width: '0.5rem', 
+                      height: '0.5rem', 
+                      borderRadius: '50%', 
+                      background: index === 0 ? '#10b981' : index === 1 ? '#f59e0b' : '#10b981',
+                      animation: 'pulse 2s infinite'
+                    }}></div>
+                    <span style={{ fontWeight: 600, color: '#f1f5f9' }}>{name}</span>
+                  </div>
+                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>
+                    {index === 0 ? 'patrolling' : index === 1 ? 'idle' : 'guarding'}
+                  </span>
+                </div>
+                
+                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                    <span>Battery:</span>
+                    <span style={{ color: '#f1f5f9' }}>{index === 0 ? '85%' : index === 1 ? '67%' : '92%'}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                    <span>Signal:</span>
+                    <span style={{ color: '#f1f5f9' }}>{index === 0 ? '92%' : index === 1 ? '88%' : '95%'}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                    <span>GPS:</span>
+                    <span style={{ color: '#f1f5f9' }}>Lat: {(37.7749 + index * 0.01).toFixed(4)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                    <span></span>
+                    <span style={{ color: '#f1f5f9' }}>Lng: {(-122.4194 + index * 0.01).toFixed(4)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Alt:</span>
+                    <span style={{ color: '#f1f5f9' }}>{120 - index * 25}m</span>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            // Show disconnected state
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              height: 'calc(100% - 3rem)',
+              color: '#64748b',
+              textAlign: 'center'
+            }}>
+              <div style={{ 
+                width: '4rem', 
+                height: '4rem', 
+                borderRadius: '50%', 
+                background: 'rgba(30, 41, 59, 0.5)', 
+                border: '2px solid rgba(239, 68, 68, 0.3)',
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                marginBottom: '1rem',
+                fontSize: '2rem'
+              }}>
+                🚁
+              </div>
+              <div style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem', color: '#ef4444' }}>
+                No Drones Connected
+              </div>
+              <div style={{ fontSize: '0.875rem', opacity: 0.7 }}>
+                Click "Connect" to establish drone connection
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
       </div>
 
       {/* Footer */}
-      <footer style={{
-        background: 'rgba(30, 41, 59, 0.5)',
-        borderTop: '1px solid rgba(6, 182, 212, 0.2)',
-        marginTop: '2rem',
-        padding: '1rem 0'
+      <div style={{ 
+        background: 'rgba(30, 41, 59, 0.5)', 
+        backdropFilter: 'blur(8px)', 
+        borderTop: '1px solid rgba(6, 182, 212, 0.2)', 
+        marginTop: '2rem', 
+        padding: '1rem 0' 
       }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          fontSize: '0.875rem',
-          color: '#94a3b8'
-        }}>
-          <div>AeroVision AI v1.0 - Cross-platform Drone Command PWA</div>
-          <div style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ maxWidth: '75rem', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontSize: '0.875rem', color: '#94a3b8' }}>
+            AeroVision AI v1.0 - Cross-platform Drone Command PWA
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.875rem', color: '#94a3b8' }}>
             <span>Connection: {droneService.getConnectionType()}</span>
             <span>•</span>
-            <span>Drones: {connectedDrones.filter(d => d.connected).length}/{connectedDrones.length}</span>
+            <span>Drones: 3</span>
           </div>
         </div>
-      </footer>
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-        
-        @keyframes ping {
-          75%, 100% {
-            transform: scale(2);
-            opacity: 0;
-          }
-        }
-        
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        @keyframes typingBounce {
-          0%, 60%, 100% {
-            transform: translateY(0);
-          }
-          30% {
-            transform: translateY(-10px);
-          }
-        }
-      `}</style>
+      </div>
     </div>
   );
 }
