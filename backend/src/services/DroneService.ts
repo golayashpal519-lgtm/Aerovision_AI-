@@ -1,4 +1,16 @@
+interface DroneData {
+  id: string;
+  name: string;
+  battery: number;
+  signal: number;
+  status: string;
+  gps: { lat: number; lng: number; alt: number };
+}
+
 class DroneService {
+  private isConnected: boolean;
+  private connectionType: string;
+
   constructor() {
     this.isConnected = false;
     this.connectionType = 'Bluetooth';
@@ -31,7 +43,7 @@ class DroneService {
     }
   }
 
-  async getTelemetry() {
+  async getTelemetry(): Promise<DroneData[]> {
     // Simulate telemetry data
     return [
       {
@@ -61,7 +73,7 @@ class DroneService {
     ];
   }
 
-  async sendCommand(command) {
+  async sendCommand(command: string): Promise<string> {
     if (!this.isConnected) {
       throw new Error('Not connected to drones');
     }
@@ -71,7 +83,7 @@ class DroneService {
     // Simulate command processing
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    const responses = {
+    const responses: { [key: string]: string } = {
       'takeoff': '✅ Drones are taking off',
       'land': '✅ Drones are landing safely',
       'patrol': '🔍 Drones are patrolling area',
@@ -86,13 +98,13 @@ class DroneService {
     return response;
   }
 
-  getConnectionStatus() {
+  getConnectionStatus(): boolean {
     return this.isConnected;
   }
 
-  getConnectionType() {
+  getConnectionType(): string {
     return this.connectionType;
   }
 }
 
-module.exports = { DroneService };
+export { DroneService };

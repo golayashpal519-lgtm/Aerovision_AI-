@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { droneService } from './services/DroneService';
 import type { DroneCommand } from './types/drone';
 

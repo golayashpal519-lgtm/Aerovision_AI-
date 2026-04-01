@@ -1,6 +1,6 @@
-const express = require('express');
-const cors = require('cors');
-const { DroneService } = require('./services/DroneService');
+import express, { Request, Response } from 'express';
+import cors from 'cors';
+import { DroneService } from './services/DroneService';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -13,50 +13,50 @@ app.use(express.json());
 const droneService = new DroneService();
 
 // Routes
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (req: Request, res: Response) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-app.post('/api/connect', async (req, res) => {
+app.post('/api/connect', async (req: Request, res: Response) => {
   try {
     const success = await droneService.connect();
     res.json({ success, message: success ? 'Connected to drones' : 'Connection failed' });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
   }
 });
 
-app.post('/api/disconnect', async (req, res) => {
+app.post('/api/disconnect', async (req: Request, res: Response) => {
   try {
     await droneService.disconnect();
     res.json({ success: true, message: 'Disconnected from drones' });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
   }
 });
 
-app.get('/api/telemetry', async (req, res) => {
+app.get('/api/telemetry', async (req: Request, res: Response) => {
   try {
     const telemetry = await droneService.getTelemetry();
     res.json({ success: true, data: telemetry });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
   }
 });
 
-app.post('/api/command', async (req, res) => {
+app.post('/api/command', async (req: Request, res: Response) => {
   try {
     const { command } = req.body;
     const result = await droneService.sendCommand(command);
     res.json({ success: true, result });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
   }
 });
 
-app.get('/api/status', (req, res) => {
+app.get('/api/status', (req: Request, res: Response) => {
   const status = {
-    isConnected: droneService.isConnected,
+    isConnected: droneService.getConnectionStatus(),
     connectionType: droneService.getConnectionType(),
     timestamp: new Date().toISOString()
   };
