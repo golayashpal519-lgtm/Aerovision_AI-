@@ -44,6 +44,12 @@ function AppSimpleChat() {
       color: '#10b981'
     }
   ]);
+  
+  // Emergency Safety System States
+  const [emergencyMode, setEmergencyMode] = useState(false);
+  const [signalLostDrones, setSignalLostDrones] = useState<string[]>([]);
+  const [emergencyLanding, setEmergencyLanding] = useState(false);
+  const [safetyAlerts, setSafetyAlerts] = useState<Array<{id: string, type: 'signal_lost' | 'low_battery' | 'emergency_landing', message: string, timestamp: string}>>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<HTMLDivElement>(null);
 
@@ -115,6 +121,130 @@ function AppSimpleChat() {
     } catch (error) {
       console.error('Disconnection failed:', error);
     }
+  };
+
+  // Emergency Safety System Monitoring
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const interval = setInterval(() => {
+      const currentTime = new Date().toLocaleTimeString();
+      const newAlerts: typeof safetyAlerts = [...safetyAlerts];
+      const newSignalLostDrones: typeof signalLostDrones = [...signalLostDrones];
+
+      // Check for signal loss on connected drones
+      connectedDrones.forEach(drone => {
+        if (drone.connected) {
+          // Simulate signal loss (in real app, this would come from actual drone telemetry)
+          const signalThreshold = 30; // Below 30% = signal lost
+          const batteryThreshold = 20; // Below 20% = critical battery
+          
+          if (drone.signal < signalThreshold && !newSignalLostDrones.includes(drone.id)) {
+            // Signal lost detected
+            newSignalLostDrones.push(drone.id);
+            setSignalLostDrones(newSignalLostDrones);
+            
+            newAlerts.push({
+              id: drone.id,
+              type: 'signal_lost',
+              message: `🚨 SIGNAL LOST - Drone ${drone.id} connection lost! Auto-return initiated.`,
+              timestamp: currentTime
+            });
+            
+            // Auto-return to base for signal loss
+            setConnectedDrones(prev => prev.map(d => 
+              d.id === drone.id 
+                ? { ...d, status: 'returning', signal: 0 }
+                : d
+            ));
+          }
+          
+          if (drone.battery < batteryThreshold && !newAlerts.some(alert => alert.id === drone.id && alert.type === 'low_battery')) {
+            // Critical battery level detected
+            newAlerts.push({
+              id: drone.id,
+              type: 'low_battery',
+              message: `🔋 CRITICAL BATTERY - Drone ${drone.id} at ${drone.battery}%! Immediate landing required.`,
+              timestamp: currentTime
+            });
+            
+            // Force emergency landing for critical battery
+            setConnectedDrones(prev => prev.map(d => 
+              d.id === drone.id 
+                ? { ...d, status: 'emergency_landing' }
+                : d
+            ));
+          }
+        }
+      });
+
+      // Check if any drone needs emergency landing
+      const needsEmergencyLanding = connectedDrones.some(drone => 
+        drone.connected && (drone.status === 'returning' || drone.status === 'emergency_landing')
+      );
+
+      if (needsEmergencyLanding && !emergencyLanding) {
+        setEmergencyLanding(true);
+        setEmergencyMode(true);
+        
+        newAlerts.push({
+          id: 'system',
+          type: 'emergency_landing',
+          message: '🚁 EMERGENCY LANDING - All drones returning to base immediately!',
+          timestamp: currentTime
+        });
+      }
+
+      // Update alerts if changed
+      if (newAlerts.length > safetyAlerts.length || newSignalLostDrones.length > signalLostDrones.length) {
+        setSafetyAlerts(newAlerts.slice(-10)); // Keep last 10 alerts
+      }
+    }, 2000); // Check every 2 seconds
+
+    return () => clearInterval(interval);
+  }, [isConnected, connectedDrones, signalLostDrones, safetyAlerts, emergencyLanding]);
+
+  // Emergency Landing Handler
+  const handleEmergencyLanding = async () => {
+    setEmergencyMode(true);
+    setEmergencyLanding(true);
+    
+    const currentTime = new Date().toLocaleTimeString();
+    
+    // Add emergency landing alert
+    setSafetyAlerts(prev => [...prev, {
+      id: 'system',
+      type: 'emergency_landing',
+      message: '🚁 MANUAL EMERGENCY LANDING - All drones landing immediately!',
+      timestamp: currentTime
+    }]);
+
+    // Command all drones to emergency land
+    setConnectedDrones(prev => prev.map(drone => ({
+      ...drone,
+      status: 'emergency_landing',
+      signal: 0
+    })));
+
+    // Send emergency command to backend
+    try {
+      await droneService.sendCommand({ droneId: 'all', command: 'EMERGENCY_LANDING' });
+    } catch (error) {
+      console.error('Emergency landing failed:', error);
+    }
+
+    // Reset after 10 seconds
+    setTimeout(() => {
+      setEmergencyLanding(false);
+      setEmergencyMode(false);
+      setSignalLostDrones([]);
+    }, 10000);
+  };
+
+  // Clear Safety Alerts
+  const clearSafetyAlerts = () => {
+    setSafetyAlerts([]);
+    setSignalLostDrones([]);
   };
 
   const parseCommand = (input: string): DroneCommand => {
@@ -248,6 +378,78 @@ function AppSimpleChat() {
               {connectionStatus === 'connected' ? 'Connected' : 'Disconnected'}
             </span>
           </div>
+
+          {/* Emergency Safety System */}
+          {isConnected && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {/* Safety Alerts */}
+              {safetyAlerts.length > 0 && (
+                <div style={{ 
+                  position: 'relative',
+                  marginRight: '8px'
+                }}>
+                  <button
+                    onClick={() => clearSafetyAlerts()}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      border: 'none',
+                      background: emergencyMode ? 'rgba(239, 68, 68, 0.3)' : 'rgba(245, 158, 11, 0.2)',
+                      color: emergencyMode ? '#fca5a5' : '#f59e0b',
+                      fontSize: '12px'
+                    }}
+                  >
+                    {emergencyMode ? '🚨 EMERGENCY' : '⚠️ ALERTS'}
+                  </button>
+                  {safetyAlerts.length > 0 && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '-8px',
+                      right: '-8px',
+                      background: '#ef4444',
+                      color: 'white',
+                      borderRadius: '50%',
+                      width: '18px',
+                      height: '18px',
+                      fontSize: '10px',
+                      fontWeight: 'bold',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      {safetyAlerts.length}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Emergency Landing Button */}
+              <button
+                onClick={handleEmergencyLanding}
+                disabled={emergencyLanding}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  cursor: emergencyLanding ? 'not-allowed' : 'pointer',
+                  border: 'none',
+                  background: emergencyLanding 
+                    ? 'rgba(239, 68, 68, 0.5)' 
+                    : 'rgba(220, 38, 38, 0.2)',
+                  color: emergencyLanding ? '#6b7280' : '#dc2626',
+                  fontSize: '12px',
+                  animation: emergencyLanding ? 'pulse 1s infinite' : 'none',
+                  boxShadow: emergencyLanding 
+                    ? '0 0 12px rgba(239, 68, 68, 0.4)' 
+                    : '0 2px 8px rgba(220, 38, 38, 0.3)'
+                }}
+              >
+                {emergencyLanding ? '🚁 LANDING...' : '🚁 EMERGENCY'}
+              </button>
+            </div>
+          )}
 
           <button
             onClick={isConnected ? handleDisconnect : handleConnect}
@@ -828,6 +1030,383 @@ function AppSimpleChat() {
           </div>
         </div>
       </div>
+
+      {/* Drone Information Panel */}
+      <div style={{ 
+        background: 'rgba(30, 41, 59, 0.5)', 
+        borderRadius: '0.5rem', 
+        padding: '1.5rem',
+        marginTop: '2rem',
+        border: '1px solid rgba(6, 182, 212, 0.2)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
+      }}>
+        <h2 style={{ 
+          fontSize: '1.25rem', 
+          fontWeight: 'bold', 
+          color: '#06b6d4', 
+          margin: '0 0 1.5rem 0',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem'
+        }}>
+          <span>🚁 System Information</span>
+          <div style={{ 
+            fontSize: '0.875rem', 
+            color: '#94a3b8',
+            fontWeight: 'normal'
+          }}>
+            ({connectedDrones.filter(d => d.connected).length} drones connected)
+          </div>
+        </h2>
+
+        {isConnected ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+            {connectedDrones.filter(drone => drone.connected).map((drone) => (
+              <div key={drone.id} style={{ 
+                background: 'rgba(15, 23, 42, 0.4)', 
+                borderRadius: '0.75rem', 
+                padding: '1.25rem',
+                border: `2px solid ${drone.color}33`,
+                boxShadow: `0 4px 16px ${drone.color}22`,
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                {/* Drone Header */}
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  marginBottom: '1rem',
+                  paddingBottom: '0.75rem',
+                  borderBottom: `1px solid ${drone.color}22`
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ 
+                      width: '1rem', 
+                      height: '1rem', 
+                      borderRadius: '50%', 
+                      background: drone.color,
+                      animation: 'pulse 2s infinite',
+                      boxShadow: `0 0 12px ${drone.color}66`
+                    }}></div>
+                    <div>
+                      <h3 style={{ 
+                        fontSize: '1.125rem', 
+                        fontWeight: 'bold', 
+                        color: drone.color,
+                        margin: '0 0 0.25rem 0'
+                      }}>
+                        Drone {drone.id}
+                      </h3>
+                      <div style={{ 
+                        fontSize: '0.875rem', 
+                        color: '#10b981',
+                        fontWeight: '600'
+                      }}>
+                        ✅ Connected
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ 
+                    fontSize: '0.75rem', 
+                    color: '#94a3b8',
+                    background: 'rgba(30, 41, 59, 0.6)',
+                    padding: '0.25rem 0.5rem',
+                    borderRadius: '0.25rem',
+                    border: '1px solid rgba(6, 182, 212, 0.2)'
+                  }}>
+                    {drone.status.toUpperCase()}
+                  </div>
+                </div>
+
+                {/* Drone Details Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  {/* Left Column */}
+                  <div>
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <div style={{ 
+                        fontSize: '0.75rem', 
+                        color: '#64748b', 
+                        marginBottom: '0.25rem',
+                        fontWeight: '600'
+                      }}>
+                        📍 GPS LOCATION
+                      </div>
+                      <div style={{ 
+                        fontSize: '0.875rem', 
+                        color: '#f1f5f9',
+                        fontFamily: 'monospace',
+                        background: 'rgba(6, 182, 212, 0.1)',
+                        padding: '0.5rem',
+                        borderRadius: '0.25rem',
+                        border: '1px solid rgba(6, 182, 212, 0.2)'
+                      }}>
+                        <div>Lat: {drone.gps.lat.toFixed(6)}°</div>
+                        <div>Lng: {drone.gps.lng.toFixed(6)}°</div>
+                        <div>Alt: {drone.gps.alt}m</div>
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <div style={{ 
+                        fontSize: '0.75rem', 
+                        color: '#64748b', 
+                        marginBottom: '0.25rem',
+                        fontWeight: '600'
+                      }}>
+                        📡 SIGNAL STRENGTH
+                      </div>
+                      <div style={{ 
+                        fontSize: '1.5rem', 
+                        fontWeight: 'bold', 
+                        color: drone.signal > 80 ? '#10b981' : drone.signal > 50 ? '#f59e0b' : '#ef4444'
+                      }}>
+                        {drone.signal}%
+                      </div>
+                      <div style={{ 
+                        fontSize: '0.75rem', 
+                        color: '#64748b',
+                        marginTop: '0.25rem'
+                      }}>
+                        {drone.signal > 80 ? 'Excellent' : drone.signal > 50 ? 'Good' : 'Weak'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column */}
+                  <div>
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <div style={{ 
+                        fontSize: '0.75rem', 
+                        color: '#64748b', 
+                        marginBottom: '0.25rem',
+                        fontWeight: '600'
+                      }}>
+                        🔋 BATTERY LEVEL
+                      </div>
+                      <div style={{ 
+                        fontSize: '1.5rem', 
+                        fontWeight: 'bold', 
+                        color: drone.battery > 70 ? '#10b981' : drone.battery > 30 ? '#f59e0b' : '#ef4444'
+                      }}>
+                        {drone.battery}%
+                      </div>
+                      <div style={{ 
+                        fontSize: '0.75rem', 
+                        color: '#64748b',
+                        marginTop: '0.25rem'
+                      }}>
+                        {drone.battery > 70 ? 'Healthy' : drone.battery > 30 ? 'Moderate' : 'Low'}
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <div style={{ 
+                        fontSize: '0.75rem', 
+                        color: '#64748b', 
+                        marginBottom: '0.25rem',
+                        fontWeight: '600'
+                      }}>
+                        ⏱️ LAST UPDATE
+                      </div>
+                      <div style={{ 
+                        fontSize: '0.875rem', 
+                        color: '#f1f5f9',
+                        fontFamily: 'monospace',
+                        background: 'rgba(6, 182, 212, 0.1)',
+                        padding: '0.5rem',
+                        borderRadius: '0.25rem',
+                        border: '1px solid rgba(6, 182, 212, 0.2)'
+                      }}>
+                        {new Date().toLocaleTimeString()}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '3rem',
+            color: '#64748b'
+          }}>
+            <div style={{ 
+              fontSize: '3rem', 
+              marginBottom: '1rem',
+              opacity: 0.5
+            }}>🚁</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+              No Drones Connected
+            </div>
+            <div style={{ fontSize: '0.875rem', color: '#94a3b8' }}>
+              Connect to view detailed drone information
+            </div>
+          </div>
+        )}
+
+        {/* System Statistics */}
+        {isConnected && (
+          <div style={{ 
+            marginTop: '2rem', 
+            padding: '1rem',
+            background: 'rgba(15, 23, 42, 0.3)',
+            borderRadius: '0.5rem',
+            border: '1px solid rgba(6, 182, 212, 0.2)'
+          }}>
+            <h3 style={{ 
+              fontSize: '1rem', 
+              fontWeight: 'bold', 
+              color: '#06b6d4', 
+              margin: '0 0 1rem 0'
+            }}>
+              📊 Fleet Statistics
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#06b6d4' }}>
+                  {connectedDrones.filter(d => d.connected).length}
+                </div>
+                <div style={{ fontSize: '0.875rem', color: '#94a3b8' }}>
+                  Connected Drones
+                </div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#f59e0b' }}>
+                  {Math.round(connectedDrones.filter(d => d.connected).reduce((sum, d) => sum + d.battery, 0) / connectedDrones.filter(d => d.connected).length)}%
+                </div>
+                <div style={{ fontSize: '0.875rem', color: '#94a3b8' }}>
+                  Avg Battery
+                </div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#10b981' }}>
+                  {Math.round(connectedDrones.filter(d => d.connected).reduce((sum, d) => sum + d.signal, 0) / connectedDrones.filter(d => d.connected).length)}%
+                </div>
+                <div style={{ fontSize: '0.875rem', color: '#94a3b8' }}>
+                  Avg Signal
+                </div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#8b5cf6' }}>
+                  {Math.round((connectedDrones.filter(d => d.connected).length / connectedDrones.length) * 100)}%
+                </div>
+                <div style={{ fontSize: '0.875rem', color: '#94a3b8' }}>
+                  Fleet Online
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Safety Alerts Panel */}
+      {safetyAlerts.length > 0 && (
+        <div style={{ 
+          background: 'rgba(239, 68, 68, 0.1)', 
+          borderRadius: '0.5rem', 
+          padding: '1rem',
+          marginTop: '1rem',
+          border: '2px solid rgba(239, 68, 68, 0.3)',
+          boxShadow: '0 8px 32px rgba(239, 68, 68, 0.2)',
+          animation: emergencyMode ? 'pulse 2s infinite' : 'none'
+        }}>
+          <h3 style={{ 
+            fontSize: '1.125rem', 
+            fontWeight: 'bold', 
+            color: emergencyMode ? '#dc2626' : '#ef4444', 
+            margin: '0 0 1rem 0',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}>
+            {emergencyMode ? '🚨 EMERGENCY ACTIVE' : '⚠️ SAFETY ALERTS'}
+          </h3>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '300px', overflowY: 'auto' }}>
+            {safetyAlerts.map((alert, index) => (
+              <div key={`${alert.id}-${alert.timestamp}-${index}`} style={{
+                background: alert.type === 'emergency_landing' 
+                  ? 'rgba(220, 38, 38, 0.3)' 
+                  : alert.type === 'signal_lost' 
+                    ? 'rgba(245, 158, 11, 0.3)' 
+                    : 'rgba(251, 146, 60, 0.3)',
+                borderRadius: '0.5rem',
+                padding: '0.75rem',
+                border: `1px solid ${
+                  alert.type === 'emergency_landing' ? '#dc2626' :
+                  alert.type === 'signal_lost' ? '#f59e0b' : '#fbbf24'
+                }`,
+                borderLeft: `4px solid ${
+                  alert.type === 'emergency_landing' ? '#dc2626' :
+                  alert.type === 'signal_lost' ? '#f59e0b' : '#fbbf24'
+                }`,
+                animation: 'fadeInUp 0.3s ease-out'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '1rem' }}>
+                      {alert.type === 'emergency_landing' ? '🚁' :
+                       alert.type === 'signal_lost' ? '📡' : '🔋'}
+                    </span>
+                    <strong style={{ 
+                      color: alert.type === 'emergency_landing' ? '#dc2626' :
+                             alert.type === 'signal_lost' ? '#f59e0b' : '#fbbf24'
+                    }}>
+                      {alert.type === 'emergency_landing' ? 'EMERGENCY LANDING' :
+                       alert.type === 'signal_lost' ? 'SIGNAL LOST' : 'LOW BATTERY'}
+                    </strong>
+                  </div>
+                  <span style={{ 
+                    fontSize: '0.75rem', 
+                    color: '#94a3b8',
+                    fontFamily: 'monospace'
+                  }}>
+                    {alert.timestamp}
+                  </span>
+                </div>
+                <div style={{ 
+                  fontSize: '0.875rem', 
+                  color: '#f1f5f9',
+                  lineHeight: '1.4'
+                }}>
+                  {alert.message}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginTop: '1rem',
+            paddingTop: '0.75rem',
+            borderTop: '1px solid rgba(239, 68, 68, 0.2)'
+          }}>
+            <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+              {emergencyLanding ? 'Emergency landing in progress...' : `${safetyAlerts.length} active alerts`}
+            </div>
+            <button
+              onClick={clearSafetyAlerts}
+              disabled={emergencyLanding}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                fontWeight: 600,
+                cursor: emergencyLanding ? 'not-allowed' : 'pointer',
+                border: 'none',
+                background: 'rgba(30, 41, 59, 0.5)',
+                color: '#64748b',
+                fontSize: '0.75rem'
+              }}
+            >
+              Clear Alerts
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer style={{
