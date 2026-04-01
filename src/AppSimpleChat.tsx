@@ -50,6 +50,21 @@ function AppSimpleChat() {
   const [signalLostDrones, setSignalLostDrones] = useState<string[]>([]);
   const [emergencyLanding, setEmergencyLanding] = useState(false);
   const [safetyAlerts, setSafetyAlerts] = useState<Array<{id: string, type: 'signal_lost' | 'low_battery' | 'emergency_landing', message: string, timestamp: string}>>([]);
+  
+  // Voice Command System States
+  const [isListening, setIsListening] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState('');
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const [voiceCommands, setVoiceCommands] = useState<Array<{command: string, timestamp: string, droneId: string}>>([]);
+  
+  // Drone Camera Gesture System States
+  const [cameraFeed, setCameraFeed] = useState<string | null>(null);
+  const [selectedDroneCamera, setSelectedDroneCamera] = useState('Alpha');
+  const [gestureDetection, setGestureDetection] = useState(false);
+  const [currentGesture, setCurrentGesture] = useState<string>('');
+  const [gestureConfidence, setGestureConfidence] = useState(0);
+  const [gestureCommands, setGestureCommands] = useState<Array<{gesture: string, timestamp: string, droneId: string, confidence: number}>>([]);
+  const [cameraError, setCameraError] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<HTMLDivElement>(null);
 
@@ -245,6 +260,192 @@ function AppSimpleChat() {
   const clearSafetyAlerts = () => {
     setSafetyAlerts([]);
     setSignalLostDrones([]);
+  };
+
+  // Voice Command System Initialization
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      setVoiceSupported(true);
+    }
+  }, []);
+
+  // Voice Command Recognition
+  const startVoiceRecognition = () => {
+    if (!voiceSupported) return;
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setVoiceTranscript('');
+    };
+
+    recognition.onresult = (event: any) => {
+      const current = event.resultIndex;
+      const transcript = event.results[current][0].transcript;
+      setVoiceTranscript(transcript);
+
+      if (event.results[current].isFinal) {
+        processVoiceCommand(transcript);
+        setIsListening(false);
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      setIsListening(false);
+      setVoiceTranscript('');
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+  };
+
+  // Process Voice Commands
+  const processVoiceCommand = (command: string) => {
+    const lowerCommand = command.toLowerCase();
+    const currentTime = new Date().toLocaleTimeString();
+    let droneCommand: DroneCommand = { droneId: 'all', command: 'HOVER' };
+
+    if (lowerCommand.includes('take off') || lowerCommand.includes('launch')) {
+      droneCommand = { droneId: 'all', command: 'TAKEOFF' };
+    } else if (lowerCommand.includes('land') || lowerCommand.includes('landing')) {
+      droneCommand = { droneId: 'all', command: 'LAND' };
+    } else if (lowerCommand.includes('emergency') || lowerCommand.includes('stop all')) {
+      droneCommand = { droneId: 'all', command: 'EMERGENCY_LANDING' };
+    } else if (lowerCommand.includes('return') || lowerCommand.includes('go back')) {
+      droneCommand = { droneId: 'all', command: 'RETURN_TO_BASE' };
+    } else if (lowerCommand.includes('guard') || lowerCommand.includes('protect')) {
+      droneCommand = { droneId: 'all', command: 'GUARD' };
+    } else if (lowerCommand.includes('patrol') || lowerCommand.includes('scan')) {
+      droneCommand = { droneId: 'all', command: 'PATROL' };
+    } else if (lowerCommand.includes('celebration') || lowerCommand.includes('show')) {
+      droneCommand = { droneId: 'all', command: 'CELEBRATION' };
+    }
+
+    // Execute command
+    droneService.sendCommand(droneCommand);
+
+    // Log voice command
+    setVoiceCommands(prev => [...prev.slice(-9), {
+      command: command,
+      timestamp: currentTime,
+      droneId: droneCommand.droneId
+    }]);
+
+    // Add to chat messages
+    const userMessage = {
+      type: 'user' as const,
+      text: `🎤 Voice: "${command}"`,
+      timestamp: currentTime
+    };
+    setMessages(prev => [...prev, userMessage]);
+
+    // Process command response
+    const responseText = `✅ **Voice Command Executed**\n\n🎤 "${command}"\n\n\`\`\`json\n${JSON.stringify(droneCommand, null, 2)}\n\`\`\``;
+    const aiMessage = {
+      type: 'ai' as const,
+      text: responseText,
+      timestamp: currentTime
+    };
+    setMessages(prev => [...prev, aiMessage]);
+  };
+
+  // Drone Camera Feed Simulation
+  const startDroneCamera = (droneId: string) => {
+    setSelectedDroneCamera(droneId);
+    setCameraError('');
+    
+    // Simulate drone camera feed (in real app, this would be WebRTC/RTMP stream)
+    const drone = connectedDrones.find(d => d.id === droneId);
+    if (drone && drone.connected) {
+      // Simulate camera feed URL
+      setCameraFeed(`drone-camera-${droneId.toLowerCase()}`);
+      setGestureDetection(true);
+      
+      // Simulate gesture detection
+      simulateGestureDetection(droneId);
+    } else {
+      setCameraError(`Drone ${droneId} is not connected`);
+      setCameraFeed(null);
+      setGestureDetection(false);
+    }
+  };
+
+  // Simulate Gesture Detection
+  const simulateGestureDetection = (droneId: string) => {
+    const gestures = [
+      { name: 'Open Palm', command: 'HOVER', confidence: 0.95 },
+      { name: 'Point Up', command: 'TAKEOFF', confidence: 0.88 },
+      { name: 'Point Down', command: 'LAND', confidence: 0.92 },
+      { name: 'Wave', command: 'RETURN_TO_BASE', confidence: 0.85 },
+      { name: 'Peace Sign', command: 'PATROL', confidence: 0.90 },
+      { name: 'Thumbs Up', command: 'GUARD', confidence: 0.93 },
+      { name: 'Stop Hand', command: 'EMERGENCY_LANDING', confidence: 0.97 },
+      { name: 'Circular Motion', command: 'CELEBRATION', confidence: 0.87 }
+    ];
+
+    const interval = setInterval(() => {
+      if (!gestureDetection) {
+        clearInterval(interval);
+        return;
+      }
+
+      // Random gesture detection for simulation
+      const randomGesture = gestures[Math.floor(Math.random() * gestures.length)];
+      setCurrentGesture(randomGesture.name);
+      setGestureConfidence(randomGesture.confidence);
+
+      // Execute gesture command
+      const droneCommand: DroneCommand = { 
+        droneId: selectedDroneCamera, 
+        command: randomGesture.command as any 
+      };
+      
+      droneService.sendCommand(droneCommand);
+
+      // Log gesture command
+      const currentTime = new Date().toLocaleTimeString();
+      setGestureCommands(prev => [...prev.slice(-9), {
+        gesture: randomGesture.name,
+        timestamp: currentTime,
+        droneId: selectedDroneCamera,
+        confidence: randomGesture.confidence
+      }]);
+
+      // Add to chat messages
+      const userMessage = {
+        type: 'user' as const,
+        text: `🙌 Gesture: "${randomGesture.name}" (${Math.round(randomGesture.confidence * 100)}% confidence)`,
+        timestamp: currentTime
+      };
+      setMessages(prev => [...prev, userMessage]);
+
+      // Process command response
+      const responseText = `✅ **Gesture Command Executed**\n\n🙌 ${randomGesture.name}\nConfidence: ${Math.round(randomGesture.confidence * 100)}%\nDrone: ${selectedDroneCamera}\n\n\`\`\`json\n${JSON.stringify(droneCommand, null, 2)}\n\`\`\``;
+      const aiMessage = {
+        type: 'ai' as const,
+        text: responseText,
+        timestamp: currentTime
+      };
+      setMessages(prev => [...prev, aiMessage]);
+    }, 5000); // Detect gesture every 5 seconds for simulation
+  };
+
+  // Stop Camera Feed
+  const stopDroneCamera = () => {
+    setCameraFeed(null);
+    setGestureDetection(false);
+    setCurrentGesture('');
+    setGestureConfidence(0);
   };
 
   const parseCommand = (input: string): DroneCommand => {
@@ -748,6 +949,242 @@ function AppSimpleChat() {
           <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#06b6d4', margin: '0 0 20px 0' }}>
             AI Mission Command
           </h2>
+
+          {/* Voice Control Section */}
+          <div style={{ 
+            background: 'rgba(15, 23, 42, 0.3)', 
+            borderRadius: '8px', 
+            padding: '16px', 
+            marginBottom: '16px',
+            border: '1px solid rgba(6, 182, 212, 0.2)'
+          }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: '#06b6d4', margin: '0 0 12px 0' }}>
+              🎤 Voice Commands
+            </h3>
+            
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
+              <button
+                onClick={startVoiceRecognition}
+                disabled={isListening || !voiceSupported}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  cursor: isListening || !voiceSupported ? 'not-allowed' : 'pointer',
+                  border: 'none',
+                  background: isListening 
+                    ? 'rgba(239, 68, 68, 0.3)' 
+                    : voiceSupported 
+                      ? 'rgba(16, 185, 129, 0.2)' 
+                      : 'rgba(107, 114, 128, 0.2)',
+                  color: isListening ? '#fca5a5' : voiceSupported ? '#10b981' : '#6b7280',
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  animation: isListening ? 'pulse 2s infinite' : 'none'
+                }}
+              >
+                {isListening ? '🔴 Recording...' : '🎤 Start Voice'}
+              </button>
+              
+              {!voiceSupported && (
+                <span style={{ fontSize: '12px', color: '#ef4444' }}>
+                  Voice recognition not supported
+                </span>
+              )}
+            </div>
+
+            {voiceTranscript && (
+              <div style={{
+                background: 'rgba(6, 182, 212, 0.1)',
+                borderRadius: '6px',
+                padding: '8px 12px',
+                fontSize: '12px',
+                color: '#f1f5f9',
+                fontFamily: 'monospace',
+                border: '1px solid rgba(6, 182, 212, 0.2)'
+              }}>
+                "{voiceTranscript}"
+              </div>
+            )}
+
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '8px' }}>
+              Try: "Take off all drones", "Land all drones", "Emergency landing", "Return to base", "Guard perimeter", "Patrol area"
+            </div>
+          </div>
+
+          {/* Drone Camera Gesture Control Section */}
+          <div style={{ 
+            background: 'rgba(15, 23, 42, 0.3)', 
+            borderRadius: '8px', 
+            padding: '16px', 
+            marginBottom: '16px',
+            border: '1px solid rgba(6, 182, 212, 0.2)'
+          }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: '#06b6d4', margin: '0 0 12px 0' }}>
+              📹 Drone Camera Gesture Control
+            </h3>
+            
+            {/* Drone Camera Selector */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+              {connectedDrones.filter(d => d.connected).map(drone => (
+                <button
+                  key={drone.id}
+                  onClick={() => selectedDroneCamera === drone.id ? stopDroneCamera() : startDroneCamera(drone.id)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    border: 'none',
+                    background: selectedDroneCamera === drone.id 
+                      ? drone.color 
+                      : 'rgba(107, 114, 128, 0.2)',
+                    color: selectedDroneCamera === drone.id ? 'white' : '#6b7280',
+                    fontSize: '11px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  {selectedDroneCamera === drone.id ? '📹' : '📷'} {drone.id}
+                  {selectedDroneCamera === drone.id && gestureDetection && ' 🙌'}
+                </button>
+              ))}
+            </div>
+
+            {/* Camera Feed Display */}
+            {cameraFeed && (
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{
+                  background: 'rgba(0, 0, 0, 0.5)',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  textAlign: 'center',
+                  border: '2px solid rgba(6, 182, 212, 0.3)',
+                  position: 'relative',
+                  minHeight: '200px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {/* Simulated Camera Feed */}
+                  <div style={{
+                    width: '100%',
+                    height: '150px',
+                    background: `linear-gradient(135deg, ${connectedDrones.find(d => d.id === selectedDroneCamera)?.color}22, rgba(6, 182, 212, 0.1))`,
+                    borderRadius: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '24px',
+                    color: '#64748b',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}>
+                    🚁 {selectedDroneCamera} Camera Feed
+                    
+                    {/* Gesture Detection Overlay */}
+                    {gestureDetection && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '8px',
+                        right: '8px',
+                        background: 'rgba(16, 185, 129, 0.9)',
+                        color: 'white',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        fontWeight: 'bold',
+                        animation: 'pulse 2s infinite'
+                      }}>
+                        🙌 GESTURE DETECTION ON
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Current Gesture Display */}
+                  {currentGesture && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '8px',
+                      left: '8px',
+                      background: 'rgba(6, 182, 212, 0.9)',
+                      color: 'white',
+                      padding: '6px 10px',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      border: '1px solid rgba(6, 182, 212, 0.5)'
+                    }}>
+                      <div>{currentGesture}</div>
+                      <div style={{ fontSize: '9px', opacity: 0.8 }}>
+                        Confidence: {Math.round(gestureConfidence * 100)}%
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {cameraError && (
+              <div style={{
+                background: 'rgba(239, 68, 68, 0.1)',
+                borderRadius: '6px',
+                padding: '8px 12px',
+                fontSize: '12px',
+                color: '#ef4444',
+                border: '1px solid rgba(239, 68, 68, 0.3)'
+              }}>
+                ⚠️ {cameraError}
+              </div>
+            )}
+
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '8px' }}>
+              <strong>Supported Gestures:</strong> ✋ Stop, 👆 Take Off, 👇 Land, 👋 Return, ✌ Patrol, 👍 Guard, 🤚 Emergency, 🔄 Celebration
+            </div>
+          </div>
+
+          {/* Command History */}
+          {(voiceCommands.length > 0 || gestureCommands.length > 0) && (
+            <div style={{ 
+              background: 'rgba(15, 23, 42, 0.3)', 
+              borderRadius: '8px', 
+              padding: '12px', 
+              marginBottom: '16px',
+              border: '1px solid rgba(6, 182, 212, 0.2)',
+              maxHeight: '150px',
+              overflowY: 'auto'
+            }}>
+              <h3 style={{ fontSize: '12px', fontWeight: 'bold', color: '#06b6d4', margin: '0 0 8px 0' }}>
+                📜 Command History
+              </h3>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px' }}>
+                {[...voiceCommands, ...gestureCommands]
+                  .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+                  .slice(0, 5)
+                  .map((cmd, index) => (
+                    <div key={index} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      padding: '4px 6px',
+                      background: 'rgba(6, 182, 212, 0.05)',
+                      borderRadius: '4px',
+                      border: '1px solid rgba(6, 182, 212, 0.1)'
+                    }}>
+                      <span>
+                        {'command' in cmd ? '🎤' : '🙌'} {'command' in cmd ? cmd.command : cmd.gesture}
+                      </span>
+                      <span style={{ color: '#64748b', fontFamily: 'monospace' }}>
+                        {cmd.timestamp}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
 
           {/* Messages */}
           <div style={{ 
