@@ -649,6 +649,26 @@ function AppSimpleChat() {
           {/* Emergency Safety System */}
           {isConnected && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {/* Remote Control Button */}
+              <button
+                onClick={() => window.open('/remote-control.html', '_blank', 'width=1200,height=800')}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: 'none',
+                  background: 'rgba(139, 92, 246, 0.2)',
+                  color: '#8b5cf6',
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                🎮 Remote Control
+              </button>
+
               {/* Passive Gesture Detection Indicator */}
               <div style={{ 
                 position: 'relative',
